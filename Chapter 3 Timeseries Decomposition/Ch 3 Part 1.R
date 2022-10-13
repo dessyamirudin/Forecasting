@@ -36,3 +36,45 @@ aus_production %>% autoplot(box_cox(Gas,lambda))+
        title=latex2exp::TeX(paste0("Transformed gas production with $\\lambda$=",round(lambda,2)))
        )
 
+# Time Series Component
+us_retail_employment = us_employment %>% 
+  filter(year(Month)>=1990,Title=="Retail Trade") %>% 
+  select(-Series_ID)
+
+autoplot(us_retail_employment,Employed)+
+  labs(y="person(thousands)",title="Total Employment in US Retail")
+
+dcmp = us_retail_employment %>% model(stl=STL(Employed))
+components(dcmp)
+
+components(dcmp) %>% 
+  as_tsibble() %>% 
+  autoplot(Employed, colour = "gray")+
+  geom_line(aes(y=trend),colour="#D55E00")+
+  labs(y="Persons (thousand)",title="Total employment in US retail")
+
+components(dcmp) %>% autoplot()
+
+# Seasonal adjusted data
+components(dcmp) %>% 
+  as_tsibble() %>% 
+  autoplot(Employed,colour="gray")+
+  geom_line(aes(y=season_adjust), colour="#0072B2")+
+  labs(y="Person (thousand)",title="Total Employment in US retail")
+
+# Moving Average
+global_economy %>% 
+  filter(Country=="Australia") %>% 
+  autoplot(Exports) + labs(y="% of GDP",title="Total Australian Export")
+
+aus_exports=global_economy %>% 
+  filter(Country=="Australia") %>% 
+  mutate(
+    `5-MA`=slider::slide_dbl(Exports,mean,.before=2,.after=2,.complete=TRUE)
+  )
+
+aus_exports %>% autoplot(Exports)+
+  geom_line(aes(y=`5-MA`),colour="#D55E00")+
+  labs(y="% GDP",
+       title="Total Australian Export")+
+  guides(colour=guide_legend(title="series"))
