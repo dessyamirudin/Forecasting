@@ -78,3 +78,65 @@ aus_exports %>% autoplot(Exports)+
   labs(y="% GDP",
        title="Total Australian Export")+
   guides(colour=guide_legend(title="series"))
+
+## moving average of moving average
+beer <- aus_production %>% filter(year(Quarter)>=1992) %>% 
+  select(Quarter,Beer)
+beer_ma <-beer %>% 
+  mutate(
+    `4-MA`=slider::slide_dbl(Beer,mean,.before = 1,.after = 2,.complete = TRUE),
+    `2x4-MA`=slider::slide_dbl(`4-MA`,mean,.before = 1,.after = 0,.complete = TRUE)
+    
+    
+  )
+
+us_retail_employment_ma <-us_retail_employment %>% 
+  mutate(
+    `12-MA`=slider::slide_dbl(Employed,mean,.before=5,.after = 6,.complete = TRUE),
+    `2x12-MA`=slider::slide_dbl(`12-MA`,mean,.before = 1,.after=0,.complete = TRUE)
+  )
+
+us_retail_employment_ma %>% autoplot(Employed,colour="gray") +
+  geom_line(aes(y=`2x12-MA`,colour="#D55E00"))+
+  labs(y='Person (thousands)',
+       title='Total Employment in US retail')
+
+# decomposition
+us_retail_employment %>% 
+  model(
+    classical_decomposition(Employed,type="additive")
+  ) %>% 
+  components() %>% 
+  autoplot()+
+  labs(title="Classical additive decomposition of total US retail employment")
+
+# X-11 and SEATS
+library(seasonal)
+
+x11_dcmp <- us_retail_employment %>% 
+  model(x11=X_13ARIMA_SEATS(Employed~x11())) %>% 
+  components()
+
+autoplot(x11_dcmp)+
+  labs(title="Decomposition of total US retail employment using X-11.")
+
+x11_dcmp %>% 
+  ggplot(aes(x=Month))+
+  geom_line(aes(y=Employed,colour="Data"))+
+  geom_line(aes(y=season_adjust,colour="Seasonally Adjusted"))+
+  geom_line(aes(y=trend,colour="Trend"))+
+  labs(y="Person thousand",
+       title="Total employment in US retail")+
+  scale_colour_manual(
+    values=c("gray","#0072B2", "#D55E00"),
+    breaks = c("Data", "Seasonally Adjusted", "Trend")
+  )
+
+x11_dcmp %>% gg_subseries(seasonal)
+
+# SEATS
+seats_dcmp = us_retail_employment %>% 
+  model(seats=X_13ARIMA_SEATS(Employed~seats())) %>% 
+  components()
+
+autoplot(seats_dcmp) %>% labs(title="Decomposition of total US retail employment using SEATS")
