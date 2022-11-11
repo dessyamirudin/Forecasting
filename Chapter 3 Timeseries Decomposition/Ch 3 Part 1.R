@@ -140,3 +140,13 @@ seats_dcmp = us_retail_employment %>%
   components()
 
 autoplot(seats_dcmp) %>% labs(title="Decomposition of total US retail employment using SEATS")
+
+# STL Decomposition
+us_retail_employment %>% 
+  model(
+    STL(Employed ~ trend(window=7)+
+          season(window="periodic"),
+        robust=TRUE)
+    
+  ) %>% components() %>% 
+  autoplot()
